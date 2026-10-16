@@ -1,7 +1,7 @@
-const API = 'https://web-production-fea72.up.railway.app/api';
+const API = 'https://web-production-cc643.up.railway.app/api';
 // Used to build the QR-code deep link students scan to log in with a
 // pre-filled code. Update this if the student site's domain ever changes.
-const STUDENT_SITE_URL = 'https://st2webite.vercel.app';
+const STUDENT_SITE_URL = 'https://website-mansa-1.vercel.app';
 
 
 function toast(msg) {
