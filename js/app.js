@@ -795,38 +795,6 @@ async function deleteVideo(id) {
 
 // Codes
 let lastLoadedCodes = [];
-let qrCodeLibraryPromise_ = null;
-
-// Load QRCode only when needed and wait for a fallback CDN to finish. A
-// script onerror handler that swaps src is not enough: the caller can run
-// before that second request completes and incorrectly report the library
-// as unavailable.
-function ensureQrCodeLibrary_() {
-  if (typeof QRCode !== 'undefined') return Promise.resolve(true);
-  if (qrCodeLibraryPromise_) return qrCodeLibraryPromise_;
-  const sources = [
-    'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
-    'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js'
-  ];
-  qrCodeLibraryPromise_ = (async () => {
-    for (const src of sources) {
-      const loaded = await new Promise(resolve => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.onload = () => resolve(typeof QRCode !== 'undefined');
-        script.onerror = () => resolve(false);
-        document.head.appendChild(script);
-      });
-      if (loaded) return true;
-    }
-    return false;
-  })().finally(() => {
-    if (typeof QRCode === 'undefined') qrCodeLibraryPromise_ = null;
-  });
-  return qrCodeLibraryPromise_;
-}
 
 async function loadCodesPage() {
   loadCodesList();
@@ -897,7 +865,7 @@ function exportAllListedCodes() {
   openCodesExportBatch(lastLoadedCodes);
 }
 
-async function renderCodesExportPage() {
+function renderCodesExportPage() {
   let batch = null;
   try { batch = JSON.parse(sessionStorage.getItem('mfx_codes_export_batch') || 'null'); } catch (e) {}
   const codes = (batch && batch.codes) || [];
@@ -926,10 +894,7 @@ async function renderCodesExportPage() {
     </div>
   `).join('');
 
-  if (!(await ensureQrCodeLibrary_())) {
-    grid.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:var(--danger);">تعذر تحميل مكتبة QR. تأكد من اتصال الإنترنت ثم حدّث الصفحة.</p>';
-    return;
-  }
+  if (typeof QRCode === 'undefined') { setTimeout(() => renderCodesExportPage(), 150); return; }
   codes.forEach((c, i) => {
     const canvas = document.getElementById('ticket-qr-' + i);
     if (!canvas) return;
@@ -968,12 +933,11 @@ async function deleteCode(id) {
   } catch (e) {}
 }
 
-async function showQrCode(code) {
+function showQrCode(code) {
   const modal = document.getElementById('qr-modal');
   const canvas = document.getElementById('qr-canvas');
   const label = document.getElementById('qr-modal-code');
-  if (!modal || !canvas) return;
-  if (!(await ensureQrCodeLibrary_())) { toast('❌ تعذر تحميل مكتبة QR. تأكد من اتصال الإنترنت ثم حدّث الصفحة'); return; }
+  if (!modal || !canvas || typeof QRCode === 'undefined') { toast('❌ مكتبة QR مش متاحة'); return; }
   label.textContent = code;
   const link = STUDENT_SITE_URL + '/login.html?code=' + encodeURIComponent(code);
   QRCode.toCanvas(canvas, link, { width: 220, margin: 2 }, (err) => { if (err) toast('❌ فشل توليد QR'); });
